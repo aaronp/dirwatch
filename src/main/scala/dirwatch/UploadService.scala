@@ -43,7 +43,7 @@ case class UploadService(uploadDir: Path,
     file.fileName match {
       case ReadyFileR(uploadId) =>
         logger.info(s"$uploadId ready")
-        val runScript = Option(file.text).map(_.trim).getOrElse(defaultRunScript)
+        val runScript = Option(file.text).map(_.trim).filterNot(_.isEmpty).getOrElse(defaultRunScript)
         try {
           val retVal = processUpload(uploadId, runScript)
           logger.info(s"Running ${runScript} for $uploadId returned '$retVal'")

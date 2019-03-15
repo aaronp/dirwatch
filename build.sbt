@@ -65,8 +65,6 @@ dockerfile in docker := {
   // The assembly task generates a fat JAR file
   val artifact: File = assembly.value
 
-  val resDir = (resourceDirectory in Compile).value
-
   val appDir = "/app"
 
   streams.value.log.info(s"Base Dir is ${baseDirectory.value.toPath}")
