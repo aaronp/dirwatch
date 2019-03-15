@@ -1,4 +1,4 @@
-package dirscan
+package dirwatch
 
 import java.nio.file.Path
 import java.util.UUID

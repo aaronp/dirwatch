@@ -1,4 +1,4 @@
-package dirscan
+package dirwatch
 
 import com.typesafe.scalalogging.StrictLogging
 

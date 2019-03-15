@@ -1,4 +1,4 @@
-package dirscan
+package dirwatch
 
 import java.nio.file.Files
 import java.nio.file.attribute.FileTime

@@ -1,8 +1,7 @@
-package dirscan
+package dirwatch
 
 import java.nio.file.Path
-import java.nio.file.attribute.{PosixFilePermission, PosixFilePermissions}
-import java.util
+import java.nio.file.attribute.PosixFilePermissions
 
 import com.typesafe.scalalogging.StrictLogging
 
@@ -50,8 +49,9 @@ object Execute {
   }
 
   def setPerms(script: Path, chmodPerms : String) = {
-    import scala.collection.JavaConverters._
     import eie.io._
+
+    import scala.collection.JavaConverters._
     script.setFilePermissions(PosixFilePermissions.fromString(chmodPerms).asScala.toSet)
     script
   }

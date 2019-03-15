@@ -76,7 +76,7 @@ dockerfile in docker := {
     volume(s"$appDir/data")
     add(artifact, s"$appDir/dirscan.jar")
     workDir(s"$appDir")
-    entryPoint("java", "-cp", "dirscan.jar", "dirscan.Main")
+    //entryPoint("java", "-cp", "dirscan.jar", "dirscan.Main")
   }
 
   sLog.value.info(s"Created dockerfile: ${dockerFile.instructions}")

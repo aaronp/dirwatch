@@ -1,11 +1,11 @@
-package dirscan
+package dirwatch
 
+import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
-import java.nio.file.{Path, StandardCopyOption}
 
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.LazyLogging
-import dirscan.Execute.BufferLogger
+import dirwatch.Execute.BufferLogger
 import eie.io._
 import monix.execution.{CancelableFuture, Scheduler}
 

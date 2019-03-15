@@ -1,6 +1,6 @@
-package dirscan
+package dirwatch
 
-import dirscan.Execute.BufferLogger
+import dirwatch.Execute.BufferLogger
 
 
 class ExecuteTest extends BaseSpec {
