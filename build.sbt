@@ -78,13 +78,18 @@ dockerfile in docker := {
   val dockerFile = new Dockerfile {
     from("java")
     maintainer(developers.value.map(_.name).headOption.getOrElse(organization.value))
-    run("mkdir", "-p", s"$appDir/data/watch")
-    run("mkdir", "-p", s"$appDir/data/upload")
+    
+    run("mkdir", "-p", "/upload")
+    env("UPLOAD_DIR", "/upload")
+    volume("/upload")
+
+    run("mkdir", "-p", "/exec")
+    env("EXEC_DIR", "/exec")
+    volume("/exec")
+
     run("mkdir", "-p", s"$appDir/config")
-    env("WATCH_DIR", s"$appDir/data/watch/")
-    env("UPLOAD_DIR", s"$appDir/data/upload/")
-    volume(s"$appDir/data")
     volume(s"$appDir/config")
+
     add(artifact, s"$appDir/dirwatch.jar")
     workDir(s"$appDir")
     entryPoint("java", "-cp", s"$appDir/config:dirwatch.jar", "dirwatch.Main")
