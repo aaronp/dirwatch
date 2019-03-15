@@ -12,7 +12,8 @@ class ExecuteTest extends BaseSpec {
 
 
       val logger = BufferLogger(dir, file.fileName)
-      Execute.makeRunnable(file)
+      //      Execute.setPerms(file, "rwxrwxrwx")
+      Execute.setPerms(file, "r-xr-x---")
       Execute.runScriptInDir(dir, file.fileName, logger) shouldBe 0
 
       logger.stdOut shouldBe "testing123"

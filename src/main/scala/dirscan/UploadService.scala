@@ -1,8 +1,11 @@
 package dirscan
 
+import java.nio.file.attribute.PosixFilePermissions
 import java.nio.file.{Path, StandardCopyOption}
 
 import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.scalalogging.LazyLogging
+import dirscan.DiffStream.logger
 import dirscan.Execute.BufferLogger
 import dirscan.UploadService.{filesWithTheSameId, uploadFilesToWorkDir}
 import eie.io._
@@ -22,11 +25,13 @@ case class UploadService(
                           watchDir: Path,
                           uploadDir: Path,
                           createUploadDirIfNotPresent: Boolean,
+                          uploadDirPerms: String,
+                          runScriptPerms: String,
                           defaultRunScript: String,
                           pollFrequency: FiniteDuration,
                           uploadFilePattern: String,
                           readyFilePattern: String
-                        ) {
+                        ) extends LazyLogging {
 
   val UniqueIdFileR: Regex = uploadFilePattern.r
   val ReadyFileR: Regex = readyFilePattern.r
@@ -38,11 +43,13 @@ case class UploadService(
   def onFile(file: Path): Unit = {
     file.fileName match {
       case ReadyFileR(uploadId) =>
+        logger.info(s"$uploadId ready")
         file.parent.foreach { dir =>
           val runScript = Option(file.text).map(_.trim).getOrElse(defaultRunScript)
+          logger.info(s"Invoking $runScript in $dir for $uploadId")
           processUpload(dir, uploadId, runScript)
         }
-      case _ =>
+      case _ => logger.debug(s"ignoring $file which doesn't match '$readyFilePattern'")
     }
   }
 
@@ -52,16 +59,21 @@ case class UploadService(
     val workDir = uploadDir.resolve(uploadId).mkDirs()
     uploadFilesToWorkDir(children, workDir, UniqueIdFileR, ReadyFileR)
 
+    Execute.setPerms(workDir.resolve(runScript), runScriptPerms)
     Execute.runScriptInDir(workDir, runScript, BufferLogger(workDir, runScript, 0, 0))
   }
 
   def start(implicit scheduler: Scheduler): CancelableFuture[Unit] = {
+    if (createUploadDirIfNotPresent && !uploadDir.isDir) {
+      logger.info(s"Creating $uploadDir w/ $uploadDirPerms")
+      uploadDir.mkDirs(PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString(uploadDirPerms)))
+    }
+
+    logger.info(s"Watching $watchDir every $pollFrequency and uploading to $uploadDir")
     val newFiles = DiffStream.diffs(watchDir, pollFrequency).collect {
       case Modified(file) => file
     }
-    newFiles.foreach { file =>
-      onFile(file)
-    }
+    newFiles.foreach(onFile)
   }
 }
 
@@ -76,19 +88,22 @@ case class UploadService(
   */
 object UploadService {
 
-  def fromRootConfig(config: Config): UploadService = {
-    apply(config.getConfig("dirwatch"))
+  def fromRootConfig(rootConfig: Config = ConfigFactory.load()): UploadService = {
+    apply(rootConfig.getConfig("dirwatch"))
   }
 
-  def apply(config: Config = ConfigFactory.load()): UploadService = {
+  def apply(dirWatchConfig: Config): UploadService = {
+    import dirWatchConfig._
     apply(
-      config.getString("watchDir").asPath,
-      config.getString("uploadDir").asPath,
-      config.getBoolean("createUploadDirIfNotPresent"),
-      config.getString("defaultRunScript"),
-      config.getDuration("pollFrequency").toMillis.millis,
-      config.getString("uploadFilePattern"),
-      config.getString("readyFilePattern")
+      getString("watchDir").asPath,
+      getString("uploadDir").asPath,
+      getBoolean("createUploadDirIfNotPresent"),
+      getString("uploadDirPerms"),
+      getString("runScriptPerms"),
+      getString("defaultRunScript"),
+      getDuration("pollFrequency").toMillis.millis,
+      getString("uploadFilePattern"),
+      getString("readyFilePattern")
     )
   }
 

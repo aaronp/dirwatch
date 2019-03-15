@@ -49,7 +49,7 @@ object Execute {
     }
   }
 
-  def makeRunnable(script: Path, chmodPerms : String = "rwxrwxrwx") = {
+  def setPerms(script: Path, chmodPerms : String) = {
     import scala.collection.JavaConverters._
     import eie.io._
     script.setFilePermissions(PosixFilePermissions.fromString(chmodPerms).asScala.toSet)

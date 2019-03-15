@@ -48,7 +48,7 @@ object DiffStream extends StrictLogging {
       case ((previousContents, _), _) =>
         val newContents = ls()
         val diffs: Array[DiffEntry] = DirEntry.diff(previousContents, newContents)
-        logger.debug(s"$dir has ${newContents.length} entries, diff ${diffs.length}")
+        logger.trace(s"$dir has ${newContents.length} entries, diff ${diffs.length}")
         newContents -> diffs
     }.distinctUntilChanged(Eq.fromUniversalEquals)
   }
