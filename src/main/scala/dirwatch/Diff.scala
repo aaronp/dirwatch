@@ -1,4 +1,4 @@
-package dirscan
+package dirwatch
 
 
 sealed trait Diff[A]
