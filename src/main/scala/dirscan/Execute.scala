@@ -1,6 +1,8 @@
 package dirscan
 
 import java.nio.file.Path
+import java.nio.file.attribute.{PosixFilePermission, PosixFilePermissions}
+import java.util
 
 import com.typesafe.scalalogging.StrictLogging
 
@@ -47,14 +49,20 @@ object Execute {
     }
   }
 
-  def invokeRunScript(workDir: Path, script: String, logger: ProcessLogger): Int = {
+  def makeRunnable(script: Path, chmodPerms : String = "rwxrwxrwx") = {
+    import scala.collection.JavaConverters._
+    import eie.io._
+    script.setFilePermissions(PosixFilePermissions.fromString(chmodPerms).asScala.toSet)
+    script
+  }
+  def runScriptInDir(workDir: Path, script: String, logger: ProcessLogger): Int = {
     import scala.sys.process._
     val sanitizedScript = if (script.startsWith("./")) {
       script
     } else {
       s"./$script"
-      script
     }
+
     val proc = Process(sanitizedScript, Option(workDir.toFile)).run(logger)
     proc.exitValue()
   }

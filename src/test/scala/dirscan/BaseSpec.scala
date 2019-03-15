@@ -55,7 +55,7 @@ abstract class BaseSpec extends WordSpec with Matchers with Eventually with Befo
     try {
       thunk(dir)
     } finally {
-      //      dir.delete(recursive = true)
+      dir.delete(recursive = true)
     }
   }
 }

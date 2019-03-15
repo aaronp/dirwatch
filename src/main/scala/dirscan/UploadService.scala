@@ -1,8 +1,69 @@
 package dirscan
 
 import java.nio.file.{Path, StandardCopyOption}
-import eie.io._
+
+import com.typesafe.config.{Config, ConfigFactory}
 import dirscan.Execute.BufferLogger
+import dirscan.UploadService.{filesWithTheSameId, uploadFilesToWorkDir}
+import eie.io._
+import monix.execution.{CancelableFuture, Scheduler}
+
+import scala.concurrent.duration._
+import scala.util.matching.Regex
+
+/** Represents the parsed configuration for the upload service
+  *
+  * @param watchDir
+  * @param uploadDir
+  * @param defaultRunScript
+  * @param pollFrequency
+  */
+case class UploadService(
+                          watchDir: Path,
+                          uploadDir: Path,
+                          createUploadDirIfNotPresent: Boolean,
+                          defaultRunScript: String,
+                          pollFrequency: FiniteDuration,
+                          uploadFilePattern: String,
+                          readyFilePattern: String
+                        ) {
+
+  val UniqueIdFileR: Regex = uploadFilePattern.r
+  val ReadyFileR: Regex = readyFilePattern.r
+
+
+  /** @param config
+    * @param file a newly created file has been uploaded
+    */
+  def onFile(file: Path): Unit = {
+    file.fileName match {
+      case ReadyFileR(uploadId) =>
+        file.parent.foreach { dir =>
+          val runScript = Option(file.text).map(_.trim).getOrElse(defaultRunScript)
+          processUpload(dir, uploadId, runScript)
+        }
+      case _ =>
+    }
+  }
+
+  def processUpload(dir: Path, uploadId: String, runScript: String) = {
+    val children = filesWithTheSameId(dir, uploadId, UniqueIdFileR)
+
+    val workDir = uploadDir.resolve(uploadId).mkDirs()
+    uploadFilesToWorkDir(children, workDir, UniqueIdFileR, ReadyFileR)
+
+    Execute.runScriptInDir(workDir, runScript, BufferLogger(workDir, runScript, 0, 0))
+  }
+
+  def start(implicit scheduler: Scheduler): CancelableFuture[Unit] = {
+    val newFiles = DiffStream.diffs(watchDir, pollFrequency).collect {
+      case Modified(file) => file
+    }
+    newFiles.foreach { file =>
+      onFile(file)
+    }
+  }
+}
 
 /**
   * The idea is that files are uploaded in the form <unique-id>__<whatever>.
@@ -15,41 +76,23 @@ import dirscan.Execute.BufferLogger
   */
 object UploadService {
 
-  private val UniqueIdFileR = "(.*)__(.*)".r
-  private val ReadyFileR = "(.*).ready".r
-
-  def update(file: Path) = {
-    file.fileName match {
-      case UniqueIdFileR(id, fileName) =>
-      case ReadyFileR(id) =>
-    }
+  def fromRootConfig(config: Config): UploadService = {
+    apply(config.getConfig("dirwatch"))
   }
 
-  case class Impl(watchDir: Path, readyDir: Path) {
-    def update(file: Path) = {
-      file.fileName match {
-        case UniqueIdFileR(id, fileName) =>
-
-
-        case ReadyFileR(uploadId) =>
-          file.parent.foreach { dir =>
-            processUpload(dir, readyDir, uploadId)
-          }
-      }
-    }
+  def apply(config: Config = ConfigFactory.load()): UploadService = {
+    apply(
+      config.getString("watchDir").asPath,
+      config.getString("uploadDir").asPath,
+      config.getBoolean("createUploadDirIfNotPresent"),
+      config.getString("defaultRunScript"),
+      config.getDuration("pollFrequency").toMillis.millis,
+      config.getString("uploadFilePattern"),
+      config.getString("readyFilePattern")
+    )
   }
 
-  def processUpload(dir: Path, readyDir: Path, uploadId: String) = {
-    val children = filesWithTheSameId(dir, uploadId)
-
-    val workDir = readyDir.resolve(uploadId).mkDirs()
-    uploadFilesToWorkDir(children, workDir)
-
-    val script = "run.sh"
-    Execute.invokeRunScript(workDir, script, BufferLogger(workDir, script, 0, 0))
-  }
-
-  def uploadFilesToWorkDir(files: Iterator[Path], toDir: Path) = {
+  def uploadFilesToWorkDir(files: Iterator[Path], toDir: Path, UniqueIdFileR: Regex, ReadyFileR: Regex) = {
     files.foreach { file =>
       file.fileName match {
         case UniqueIdFileR(_, fileName) =>
@@ -60,12 +103,11 @@ object UploadService {
     }
   }
 
-  def filesWithTheSameId(inDir: Path, uniqueId: String): Iterator[Path] = {
+  def filesWithTheSameId(inDir: Path, uniqueId: String, UniqueIdFileR: Regex): Iterator[Path] = {
     inDir.childrenIter.filter { child =>
       child.fileName match {
         case UniqueIdFileR(id, _) => id == uniqueId
       }
     }
-
   }
 }
