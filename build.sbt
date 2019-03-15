@@ -1,3 +1,5 @@
+import scoverage.ScoverageKeys.coverageFailOnMinimum
+
 val username = "aaronp"
 val repo = "dirwatch"
 organization := s"com.github.${username}"
@@ -6,6 +8,9 @@ name := repo
 
 enablePlugins(BuildInfoPlugin)
 enablePlugins(DockerPlugin)
+
+coverageMinimum := 80
+coverageFailOnMinimum := true
 
 libraryDependencies ++= List(
 
