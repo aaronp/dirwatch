@@ -1,4 +1,4 @@
-val username            = "aaronp"
+val username = "aaronp"
 val repo = "dirwatch"
 organization := s"com.github.${username}"
 
@@ -9,15 +9,15 @@ enablePlugins(DockerPlugin)
 
 libraryDependencies ++= List(
 
-   "com.github.aaronp"          %% "eie"             % "0.0.3",
-   "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.2",
-   "io.monix"                   %% "monix-reactive"  % "3.0.0-RC2",
-   "ch.qos.logback"              % "logback-classic" % "1.2.3",
-   "com.typesafe"                % "config"          % "1.3.2",
+  "com.github.aaronp" %% "eie" % "0.0.3",
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
+  "io.monix" %% "monix-reactive" % "3.0.0-RC2",
+  "ch.qos.logback" % "logback-classic" % "1.2.3",
+  "com.typesafe" % "config" % "1.3.2",
 
-   "junit"                  %  "junit"     % "4.12"  % "test",
-   "org.scalatest"          %% "scalatest" % "3.0.5" % "test",
-   "org.scala-lang.modules" %% "scala-xml" % "1.1.1" % "test"
+  "junit" % "junit" % "4.12" % "test",
+  "org.scalatest" %% "scalatest" % "3.0.5" % "test",
+  "org.scala-lang.modules" %% "scala-xml" % "1.1.1" % "test"
 )
 
 buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
@@ -27,7 +27,10 @@ pomIncludeRepository := (_ => false)
 
 // To sync with Maven central, you need to supply the following information:
 pomExtra in Global := {
-  <url>https://github.com/${username}/${repo}
+  <url>https://github.com/$
+    {username}
+    /$
+    {repo}
   </url>
     <licenses>
       <license>
@@ -38,10 +41,14 @@ pomExtra in Global := {
     <developers>
       <developer>
         <id>
-          ${username}
+          $
+          {username}
         </id>
         <name>Aaron Pritzlaff</name>
-        <url>https://github.com/${username}/${repo}
+        <url>https://github.com/$
+          {username}
+          /$
+          {repo}
         </url>
       </developer>
     </developers>
@@ -58,7 +65,7 @@ dockerfile in docker := {
   // The assembly task generates a fat JAR file
   val artifact: File = assembly.value
 
-  val resDir         = (resourceDirectory in Compile).value
+  val resDir = (resourceDirectory in Compile).value
 
   val appDir = "/app"
 
@@ -71,12 +78,16 @@ dockerfile in docker := {
   val dockerFile = new Dockerfile {
     from("java")
     maintainer(developers.value.map(_.name).headOption.getOrElse(organization.value))
-    run("mkdir", "-p", s"$appDir/data")
-    env("DATA_DIR", s"$appDir/data/")
+    run("mkdir", "-p", s"$appDir/data/watch")
+    run("mkdir", "-p", s"$appDir/data/upload")
+    run("mkdir", "-p", s"$appDir/config")
+    env("WATCH_DIR", s"$appDir/data/watch/")
+    env("UPLOAD_DIR", s"$appDir/data/upload/")
     volume(s"$appDir/data")
-    add(artifact, s"$appDir/dirscan.jar")
+    volume(s"$appDir/config")
+    add(artifact, s"$appDir/dirwatch.jar")
     workDir(s"$appDir")
-    //entryPoint("java", "-cp", "dirscan.jar", "dirscan.Main")
+    entryPoint("java", "-cp", s"$appDir/config:dirwatch.jar", "dirwatch.Main")
   }
 
   sLog.value.info(s"Created dockerfile: ${dockerFile.instructions}")
